@@ -18,17 +18,24 @@ export class PostController {
   }
 
   async getPostById(req: Request, res: Response) {
+    const postId = Number(req.params.id);
+
+    if (isNaN(postId)) {
+         return res.status(400).json({ message: 'Invalid post id' });
+        }
+
     const post = await this.postRepository.findOne({
-      where: { id: Number(req.params.id) },
-      relations: ['author'],
+        where: { id: postId },
+        relations: ['author'],
     });
 
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+        return res.status(404).json({ message: 'Post not found' });
     }
 
     res.json(post);
   }
+
 
   async createPost(req: Request, res: Response) {
     const { content, authorId , hashtags = []} = req.body;
@@ -98,8 +105,34 @@ export class PostController {
         .where('hashtag.name = :tag', { tag })
         .orderBy('post.createdAt', 'DESC')
         .getMany();
-
         res.json(posts);
     }
 
+    async getFeed(req: Request, res: Response) {
+        const userId = Number(req.query.userId);
+        const limit = Number(req.query.limit) || 10;
+        const offset = Number(req.query.offset) || 0;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'userId is required' });
+        }
+
+        const posts = await this.postRepository
+            .createQueryBuilder('post')
+            .innerJoin(
+                'follows',
+                'follow',
+                'follow.followingId = post.authorId'
+            )
+            .leftJoinAndSelect('post.author', 'author')
+            .leftJoinAndSelect('post.hashtags', 'hashtag')
+            .leftJoin('post.likes', 'like')
+            .where('follow.followerId = :userId', { userId })
+            .orderBy('post.createdAt', 'DESC')
+            .skip(offset)
+            .take(limit)
+            .loadRelationCountAndMap('post.likeCount', 'post.likes')
+            .getMany();
+        res.json(posts);
+    }
 }

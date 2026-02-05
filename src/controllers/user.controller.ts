@@ -29,14 +29,18 @@ export class UserController {
   }
 
   async createUser(req: Request, res: Response) {
-    try {
-      const user = this.userRepository.create(req.body);
-      const result = await this.userRepository.save(user);
-      res.status(201).json(result);
-    } catch (error) {
-      res.status(500).json({ message: 'Error creating user', error });
-    }
-  }
+      try {
+        const user = this.userRepository.create(req.body);
+        const result = await this.userRepository.save(user);
+        res.status(201).json(result);
+      } 
+      catch (error: any) {
+        if (error.code === 'SQLITE_CONSTRAINT') {
+          return res.status(400).json({ message: 'Email already exists' });
+        }
+        res.status(500).json({ message: 'Error creating user' });
+      }
+}
 
   async updateUser(req: Request, res: Response) {
     try {

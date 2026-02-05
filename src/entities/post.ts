@@ -8,9 +8,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  OneToMany,
 } from 'typeorm';
 import { User } from './User';
 import { Hashtag } from './Hashtag';
+import { Like } from './Like';
+
 
 @Entity('posts')
 @Index(['author', 'createdAt'])
@@ -38,4 +41,8 @@ export class Post {
     inverseJoinColumn: { name: 'hashtagId', referencedColumnName: 'id' },
   })
   hashtags: Hashtag[];
+
+  @OneToMany(() => Like, (like) => like.post)
+  likes: Like[];
+
 }
