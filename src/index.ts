@@ -3,8 +3,9 @@ import dotenv from 'dotenv';
 import { userRouter } from './routes/user.routes';
 import { AppDataSource } from './data-source';
 import postRoutes from './routes/post.routes';
-import followRoutes from './routes/follow.routers';
+import followRoutes from './routes/follow.routes';
 import { FollowController } from './controllers/follow.controller';
+import likeRoutes from './routes/like.routes';
 
 
 dotenv.config();
@@ -33,6 +34,7 @@ app.get(
 app.use('/api/users', userRouter);
 app.use('/api/posts', postRoutes);
 app.use('/api/follows', followRoutes);
+app.use('/api/likes', likeRoutes);
 
 const PORT = process.env.PORT || 3000;
 

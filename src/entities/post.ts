@@ -3,11 +3,14 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  ManyToMany,
+  JoinTable,
   CreateDateColumn,
   UpdateDateColumn,
   Index,
 } from 'typeorm';
 import { User } from './User';
+import { Hashtag } from './Hashtag';
 
 @Entity('posts')
 @Index(['author', 'createdAt'])
@@ -26,4 +29,13 @@ export class Post {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+
+  @ManyToMany(() => Hashtag, { cascade: true })
+  @JoinTable({
+    name: 'post_hashtags',
+    joinColumn: { name: 'postId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'hashtagId', referencedColumnName: 'id' },
+  })
+  hashtags: Hashtag[];
 }

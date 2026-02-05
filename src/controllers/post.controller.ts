@@ -2,10 +2,12 @@ import { Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { Post } from '../entities/post';
 import { User } from '../entities/User';
+import { Hashtag } from '../entities/Hashtag';
 
 export class PostController {
   private postRepository = AppDataSource.getRepository(Post);
   private userRepository = AppDataSource.getRepository(User);
+  private hashtagRepo = AppDataSource.getRepository(Hashtag);
 
   async getAllPosts(req: Request, res: Response) {
     const posts = await this.postRepository.find({
@@ -29,16 +31,33 @@ export class PostController {
   }
 
   async createPost(req: Request, res: Response) {
-    const { content, authorId } = req.body;
+    const { content, authorId , hashtags = []} = req.body;
 
     const author = await this.userRepository.findOneBy({ id: authorId });
     if (!author) {
       return res.status(404).json({ message: 'Author not found' });
     }
 
+    const hashtagEntities = [];
+
+    for (const tag of hashtags) {
+        const normalized = tag.toLowerCase();
+
+        let hashtag = await this.hashtagRepo.findOne({
+          where: { name: normalized },
+    });
+
+    if (!hashtag) {
+      hashtag = this.hashtagRepo.create({ name: normalized });
+      await this.hashtagRepo.save(hashtag);
+    }
+
+       hashtagEntities.push(hashtag);
+    }
     const post = this.postRepository.create({
       content,
       author,
+      hashtags: hashtagEntities,
     });
 
     const result = await this.postRepository.save(post);
@@ -68,4 +87,19 @@ export class PostController {
 
     res.status(204).send();
   }
+
+  async getPostsByHashtag(req: Request, res: Response) {
+    const tag = req.params.tag.toLowerCase();
+
+    const posts = await this.postRepository
+        .createQueryBuilder('post')
+        .leftJoinAndSelect('post.author', 'author')
+        .leftJoinAndSelect('post.hashtags', 'hashtag')
+        .where('hashtag.name = :tag', { tag })
+        .orderBy('post.createdAt', 'DESC')
+        .getMany();
+
+        res.json(posts);
+    }
+
 }
