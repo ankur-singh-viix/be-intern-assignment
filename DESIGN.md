@@ -118,3 +118,79 @@ Activity tracking
 Personalized feed endpoint
 
 The current schema is designed to support these features with minimal changes.
+
+
+
+## Follow System Design
+
+The follow system models the social relationship where one user follows another user.
+
+Database Design
+
+A separate follows table is used instead of embedding follow information in the users table. This keeps the schema normalized and allows efficient querying for followers and following relationships.
+
+Fields:
+
+id (primary key)
+
+followerId (foreign key → users.id)
+
+followingId (foreign key → users.id)
+
+createdAt
+
+Both followerId and followingId reference the users table, creating a self-referencing relationship.
+
+Constraints & Data Integrity
+
+A unique constraint is applied on (followerId, followingId) to prevent duplicate follow relationships.
+
+A user cannot follow themselves, which is enforced at the API layer.
+
+Foreign key constraints with CASCADE deletion ensure that follow records are removed automatically when a user is deleted.
+
+These constraints ensure consistency even if API-level checks fail.
+
+Indexing Strategy
+
+An index is created on (followingId, createdAt) to optimize queries that fetch a user’s followers.
+
+This index supports endpoints that list followers in reverse chronological order.
+
+Indexes are chosen based on read-heavy access patterns rather than premature optimization.
+
+API Design
+
+The follow functionality is exposed through simple, action-based APIs:
+
+Follow a user
+
+Creates a new follow relationship.
+
+Unfollow a user
+
+Deletes an existing follow relationship.
+
+Get followers of a user
+
+Returns a paginated list of users who follow the given user.
+
+Proper HTTP status codes are returned for edge cases such as duplicate follows or unfollowing a non-existent relationship.
+
+Error Handling Strategy
+
+Duplicate follow attempts return a clear client error instead of crashing the application.
+
+Unfollow operations return a 404 response if the follow relationship does not exist.
+
+Database-level constraints act as a safety net for race conditions.
+
+This layered approach improves reliability and user experience.
+
+Scalability Considerations
+
+Follow relationships are stored in a dedicated table to allow efficient scaling.
+
+Indexing supports fast lookup for follower lists as the user base grows.
+
+The design can be extended to support “following” lists or mutual follow checks without schema changes.
