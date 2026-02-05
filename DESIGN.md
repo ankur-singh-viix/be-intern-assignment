@@ -194,3 +194,79 @@ Follow relationships are stored in a dedicated table to allow efficient scaling.
 Indexing supports fast lookup for follower lists as the user base grows.
 
 The design can be extended to support “following” lists or mutual follow checks without schema changes.
+
+
+
+## Like System Design
+
+The like system allows users to express engagement with posts. Each like represents a relationship between a user and a post.
+
+Database Design
+
+Likes are stored in a separate likes table to keep the schema normalized and flexible.
+
+Fields:
+
+id (primary key)
+
+userId (foreign key → users.id)
+
+postId (foreign key → posts.id)
+
+createdAt
+
+Each record represents one user liking one post.
+
+Constraints & Data Integrity
+
+A unique constraint on (userId, postId) ensures that a user can like a post only once.
+
+Foreign key constraints with CASCADE deletion automatically remove likes when the associated user or post is deleted.
+
+Duplicate likes are handled gracefully at the API level to avoid application crashes.
+
+These rules ensure data consistency even under concurrent requests.
+
+Indexing Strategy
+
+An index is added on postId to optimize queries that fetch all likes for a given post.
+
+This supports features such as displaying like counts or listing users who liked a post.
+
+Indexes are chosen based on actual query needs rather than adding them prematurely.
+
+API Design
+
+The like functionality is exposed through simple endpoints:
+
+Like a post
+
+Creates a new like record.
+
+Unlike a post
+
+Removes an existing like record.
+
+Get likes for a post
+
+Returns the total number of likes and basic user information.
+
+Clear HTTP status codes are returned for edge cases such as duplicate likes or unliking a post that was not previously liked.
+
+Error Handling Strategy
+
+Duplicate like attempts return a client error instead of causing database exceptions.
+
+Unliking a non-existent like returns a 404 response.
+
+Database constraints act as a safety net for race conditions, while API checks provide meaningful feedback to clients.
+
+This layered approach improves stability and clarity.
+
+Scalability Considerations
+
+Like records are stored independently, allowing the system to scale as engagement increases.
+
+Indexed queries keep read operations efficient as the number of likes grows.
+
+The current design can support future features such as activity tracking or popularity-based sorting without schema changes.
