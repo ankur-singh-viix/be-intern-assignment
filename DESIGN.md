@@ -270,3 +270,72 @@ Like records are stored independently, allowing the system to scale as engagemen
 Indexed queries keep read operations efficient as the number of likes grows.
 
 The current design can support future features such as activity tracking or popularity-based sorting without schema changes.
+
+
+## Hashtag System Design
+
+The hashtag system allows posts to be categorized and discovered using tags. Hashtags are shared across posts and are reused instead of being duplicated.
+
+Database Design
+
+Hashtags are stored in a separate hashtags table and connected to posts using a join table to support a many-to-many relationship.
+
+Hashtag Table Fields:
+
+id (primary key)
+
+name (unique, stored in lowercase)
+
+createdAt
+
+Join Table (post_hashtags):
+
+postId (foreign key → posts.id)
+
+hashtagId (foreign key → hashtags.id)
+
+This design allows efficient reuse of hashtags across multiple posts.
+
+Relationship Design
+
+A post can have multiple hashtags.
+
+A hashtag can be associated with multiple posts.
+
+A many-to-many relationship is implemented using an explicit join table (post_hashtags).
+
+This keeps the schema normalized and avoids duplication of hashtag data.
+
+Constraints & Data Integrity
+
+Hashtag names are unique to prevent duplicate records.
+
+Hashtags are normalized to lowercase at the application level to ensure case-insensitive matching.
+
+Foreign key constraints with cascading behavior ensure that join records are cleaned up automatically when a post is deleted.
+
+Indexing Strategy
+
+An index is added on the name column of the hashtags table to support fast hashtag-based searches.
+
+This improves performance for endpoints that fetch posts by hashtag.
+
+Indexes are chosen based on actual query usage rather than premature optimization.
+
+API Design
+
+The hashtag system is exposed indirectly through post-related APIs:
+
+Hashtags are created or reused automatically during post creation.
+
+Posts can be fetched by hashtag using a dedicated endpoint.
+
+This keeps the API simple while still supporting discoverability.
+
+Scalability Considerations
+
+Hashtags are stored independently and reused across posts, allowing the system to scale without data duplication.
+
+Indexed lookups ensure hashtag searches remain efficient as the number of posts grows.
+
+The design supports future features such as trending hashtags or hashtag analytics without schema changes.
