@@ -3,11 +3,15 @@ import dotenv from 'dotenv';
 import { userRouter } from './routes/user.routes';
 import { AppDataSource } from './data-source';
 import postRoutes from './routes/post.routes';
+import followRoutes from './routes/follow.routers';
+import { FollowController } from './controllers/follow.controller';
+
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+const followController = new FollowController();
 
 AppDataSource.initialize()
   .then(() => {
@@ -21,8 +25,14 @@ app.get('/', (req, res) => {
   res.send('Welcome to the Social Media Platform API! Server is running successfully.');
 });
 
+app.get(
+  '/api/users/:id/followers',
+  followController.getFollowers.bind(followController)
+);
+
 app.use('/api/users', userRouter);
 app.use('/api/posts', postRoutes);
+app.use('/api/follows', followRoutes);
 
 const PORT = process.env.PORT || 3000;
 
