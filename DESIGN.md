@@ -339,3 +339,107 @@ Hashtags are stored independently and reused across posts, allowing the system t
 Indexed lookups ensure hashtag searches remain efficient as the number of posts grows.
 
 The design supports future features such as trending hashtags or hashtag analytics without schema changes.
+
+
+ ## Activity Tracking System DesignFeed (/api/posts/feed)
+Overview
+
+The feed endpoint is responsible for showing users a personalized list of posts.
+Instead of showing all posts in the system, the feed only includes posts created by users that the current user follows.
+
+This mirrors how feeds work in real social media platforms, where users primarily see content from people they have chosen to follow.
+
+How the Feed Works:
+When a request is made to the feed endpoint, the backend performs the following steps:
+
+The userId is taken from the query parameters.
+
+All users followed by the given user are fetched from the follows table.
+
+Posts are retrieved where the author belongs to that followed user list.
+
+Each post is joined with its author details.
+
+The number of likes on each post is calculated.
+
+Posts are sorted by creation time, with the newest posts shown first.
+
+Pagination is applied using limit and offset.
+
+If the user does not follow anyone, the feed correctly returns an empty list.
+
+API Details
+
+Endpoint
+
+GET /api/posts/feed
+
+
+Query Parameters
+
+userId – ID of the current user
+
+limit – number of posts to return
+
+offset – pagination offset
+
+Example
+
+/api/posts/feed?userId=1&limit=10&offset=0
+
+Response Format
+
+Each feed item contains:
+
+post content
+
+post creation time
+
+author information
+
+associated hashtags
+
+total like count
+
+Example response:
+
+{
+  "id": 3,
+  "content": "Hello from sudh 👋",
+  "createdAt": "2026-02-05T20:04:23.000Z",
+  "author": {
+    "id": 2,
+    "firstName": "sudh",
+    "lastName": "singh",
+    "email": "sukurd@test.com"
+  },
+  "hashtags": [],
+  "likeCount": 0
+}
+
+Performance Considerations
+
+An index on authorId and createdAt is used to keep feed queries fast.
+
+Like counts are calculated using aggregation instead of loading all likes.
+
+Pagination ensures the endpoint remains efficient even with a large number of posts.
+
+Edge Cases:
+If a user does not follow anyone, the feed returns an empty array.
+
+Invalid or missing query parameters are handled safely.
+
+The endpoint never crashes due to malformed input.
+
+Future Improvements:
+Cursor-based pagination for better performance at scale.
+
+Caching feed results for frequently active users.
+
+Adding ranking logic based on likes or engagement.
+
+Why This Design
+
+The feed logic is intentionally kept simple and easy to reason about.
+It focuses on correctness and clarity first, while still allowing room for optimization and scaling in the future.
