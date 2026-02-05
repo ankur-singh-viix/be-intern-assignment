@@ -18,5 +18,10 @@ userRouter.post('/', validate(createUserSchema), userController.createUser.bind(
 // Update user
 userRouter.put('/:id', validate(updateUserSchema), userController.updateUser.bind(userController));
 
+// Get user activity
+userRouter.get('/:id/activity', userController.getUserActivity.bind(userController));
+
 // Delete user
 userRouter.delete('/:id', userController.deleteUser.bind(userController));
+
+
