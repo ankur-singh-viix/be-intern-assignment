@@ -1,14 +1,27 @@
-1. Overview
+## 1. Overview
 
-This project implements the backend for a simple social media platform. The current implementation focuses on core entities such as Users and Posts, providing clean CRUD APIs, proper database relationships, and a migration-based schema setup using TypeORM with SQLite.
+This project implements the backend for a simple social media platform using Node.js, Express, TypeORM, and SQLite.
 
-The design emphasizes data integrity, clear entity relationships, and query patterns that can scale as the dataset grows.
+The goal of the implementation is to build a clean and extensible backend that supports common social media features such as users, posts, follows, likes, hashtags, feeds, and activity tracking.
 
-2. Database Schema & Entity Relationships User
+The design prioritizes:
+
+Clear data modeling
+
+Strong data integrity through database constraints
+
+Predictable schema evolution using migrations
+
+Simple, readable APIs that can scale as the dataset grows
+
+All schema changes are handled through migrations, and automatic synchronization is intentionally disabled to avoid unexpected schema drift.
+
+## 2. Database Schema & Entity Relationships
+User
 
 The users table stores basic profile information for each user.
 
-Fields:
+Fields
 
 id (primary key)
 
@@ -22,22 +35,25 @@ createdAt
 
 updatedAt
 
-Relationships:
-One user can create multiple posts.
+Relationships
 
-This is implemented using a one-to-many relationship between User and Post.
+A user can create multiple posts
 
-A unique constraint is applied to the email field to prevent duplicate user accounts.
+A user can follow many users and be followed by many users
+
+A user can like multiple posts
+
+A unique constraint on email ensures that duplicate user accounts cannot be created.
 
 Post
 
 The posts table stores content created by users.
 
-Fields:
+Fields
 
 id (primary key)
 
-content (text)
+content
 
 authorId (foreign key → users.id)
 
@@ -45,91 +61,27 @@ createdAt
 
 updatedAt
 
-Relationships:
+Relationships
 
-Each post belongs to exactly one user (author).
+Each post belongs to exactly one user (author)
 
-A user can have multiple posts.
+A user can have many posts
 
-This many-to-one relationship allows efficient retrieval of posts along with their author details and supports feed-related queries in later stages.
+A post can have many likes
 
-Foreign key constraints are enforced, and posts are automatically deleted if their author is removed.
+A post can have many hashtags
 
-3. Indexing Strategy
+Posts are automatically deleted if the author is deleted, ensuring referential integrity.
 
-Indexes are added based on expected query patterns.
-
-An index on (authorId, createdAt) is created on the posts table.
-
-This optimizes queries that fetch posts for a user in reverse chronological order.
-
-This index will be especially useful for implementing the user feed feature.
-
-A unique index on email is applied in the users table to ensure data integrity.
-
-Indexes are kept minimal at this stage to avoid unnecessary overhead.
-
-4. Migration Strategy
-
-Database schema changes are managed using TypeORM migrations.
-
-Automatic schema synchronization is disabled.
-
-Each schema change (such as adding users or posts) is generated as a migration.
-
-Migrations are tested by recreating the database from scratch to ensure reliability.
-
-This approach ensures predictable schema evolution and prevents environment-specific inconsistencies.
-
-5. API Design Decisions
-
-RESTful conventions are followed for all endpoints.
-
-Separate controllers and routes are used to keep responsibilities clear.
-
-CRUD operations are implemented for both users and posts.
-
-Post endpoints return author details where required to reduce additional API calls.
-
-List endpoints are designed to be pagination-ready using limit and offset parameters in later stages.
-
-6. Scalability Considerations
-
-Pagination will be applied to list endpoints to handle large datasets.
-
-Indexes are used to optimize read-heavy operations such as fetching posts.
-
-Entity relationships are designed to support future features like feeds and activity tracking.
-
-As the system grows, caching mechanisms (e.g., Redis) and background processing for activity logs can be introduced without major refactoring.
-
-7. Future Enhancements
-
-Planned additions include:
-
-Follow system
-
-Like system
-
-Hashtags
-
-Activity tracking
-
-Personalized feed endpoint
-
-The current schema is designed to support these features with minimal changes.
-
-
-
-## Follow System Design
+## 3. Follow System Design
 
 The follow system models the social relationship where one user follows another user.
 
 Database Design
 
-A separate follows table is used instead of embedding follow information in the users table. This keeps the schema normalized and allows efficient querying for followers and following relationships.
+Follow relationships are stored in a dedicated follows table rather than being embedded inside the users table. This keeps the schema normalized and allows efficient querying.
 
-Fields:
+Fields
 
 id (primary key)
 
@@ -139,73 +91,38 @@ followingId (foreign key → users.id)
 
 createdAt
 
-Both followerId and followingId reference the users table, creating a self-referencing relationship.
+This is a self-referencing relationship on the users table.
 
 Constraints & Data Integrity
 
-A unique constraint is applied on (followerId, followingId) to prevent duplicate follow relationships.
+A unique constraint on (followerId, followingId) prevents duplicate follow relationships
 
-A user cannot follow themselves, which is enforced at the API layer.
+Users cannot follow themselves (validated at the API layer)
 
-Foreign key constraints with CASCADE deletion ensure that follow records are removed automatically when a user is deleted.
+Foreign key constraints use CASCADE deletion so follow records are removed automatically when a user is deleted
 
-These constraints ensure consistency even if API-level checks fail.
-
-Indexing Strategy
-
-An index is created on (followingId, createdAt) to optimize queries that fetch a user’s followers.
-
-This index supports endpoints that list followers in reverse chronological order.
-
-Indexes are chosen based on read-heavy access patterns rather than premature optimization.
+Database-level constraints act as a safety net in case of race conditions or unexpected API usage.
 
 API Design
 
-The follow functionality is exposed through simple, action-based APIs:
-
 Follow a user
-
-Creates a new follow relationship.
 
 Unfollow a user
 
-Deletes an existing follow relationship.
-
 Get followers of a user
 
-Returns a paginated list of users who follow the given user.
-
-Proper HTTP status codes are returned for edge cases such as duplicate follows or unfollowing a non-existent relationship.
-
-Error Handling Strategy
-
 Duplicate follow attempts return a clear client error instead of crashing the application.
+Unfollow requests return a 404 if the relationship does not exist.
 
-Unfollow operations return a 404 response if the follow relationship does not exist.
+## 4. Like System Design
 
-Database-level constraints act as a safety net for race conditions.
-
-This layered approach improves reliability and user experience.
-
-Scalability Considerations
-
-Follow relationships are stored in a dedicated table to allow efficient scaling.
-
-Indexing supports fast lookup for follower lists as the user base grows.
-
-The design can be extended to support “following” lists or mutual follow checks without schema changes.
-
-
-
-## Like System Design
-
-The like system allows users to express engagement with posts. Each like represents a relationship between a user and a post.
+The like system allows users to express engagement with posts.
 
 Database Design
 
-Likes are stored in a separate likes table to keep the schema normalized and flexible.
+Likes are stored in a separate likes table.
 
-Fields:
+Fields
 
 id (primary key)
 
@@ -217,156 +134,83 @@ createdAt
 
 Each record represents one user liking one post.
 
-Constraints & Data Integrity
+Constraints & Integrity
 
-A unique constraint on (userId, postId) ensures that a user can like a post only once.
+A unique constraint on (userId, postId) ensures a user can like a post only once
 
-Foreign key constraints with CASCADE deletion automatically remove likes when the associated user or post is deleted.
+Foreign keys use cascading deletes so likes are removed automatically if the user or post is deleted
 
-Duplicate likes are handled gracefully at the API level to avoid application crashes.
+Duplicate likes are handled gracefully at the API level
 
-These rules ensure data consistency even under concurrent requests.
+Indexing
 
-Indexing Strategy
+An index on postId supports fast lookups when calculating like counts or listing likes for a post
 
-An index is added on postId to optimize queries that fetch all likes for a given post.
+## 5. Hashtag System Design
 
-This supports features such as displaying like counts or listing users who liked a post.
-
-Indexes are chosen based on actual query needs rather than adding them prematurely.
-
-API Design
-
-The like functionality is exposed through simple endpoints:
-
-Like a post
-
-Creates a new like record.
-
-Unlike a post
-
-Removes an existing like record.
-
-Get likes for a post
-
-Returns the total number of likes and basic user information.
-
-Clear HTTP status codes are returned for edge cases such as duplicate likes or unliking a post that was not previously liked.
-
-Error Handling Strategy
-
-Duplicate like attempts return a client error instead of causing database exceptions.
-
-Unliking a non-existent like returns a 404 response.
-
-Database constraints act as a safety net for race conditions, while API checks provide meaningful feedback to clients.
-
-This layered approach improves stability and clarity.
-
-Scalability Considerations
-
-Like records are stored independently, allowing the system to scale as engagement increases.
-
-Indexed queries keep read operations efficient as the number of likes grows.
-
-The current design can support future features such as activity tracking or popularity-based sorting without schema changes.
-
-
-## Hashtag System Design
-
-The hashtag system allows posts to be categorized and discovered using tags. Hashtags are shared across posts and are reused instead of being duplicated.
+The hashtag system allows posts to be categorized and discovered using reusable tags.
 
 Database Design
 
-Hashtags are stored in a separate hashtags table and connected to posts using a join table to support a many-to-many relationship.
+Hashtags are stored in a separate hashtags table and linked to posts using a join table.
 
-Hashtag Table Fields:
+Hashtags Table
 
 id (primary key)
 
-name (unique, stored in lowercase)
+name (unique, lowercase)
 
 createdAt
 
-Join Table (post_hashtags):
+Join Table (post_hashtags)
 
 postId (foreign key → posts.id)
 
 hashtagId (foreign key → hashtags.id)
 
-This design allows efficient reuse of hashtags across multiple posts.
+This supports a many-to-many relationship between posts and hashtags.
 
-Relationship Design
+Design Decisions
 
-A post can have multiple hashtags.
+Hashtags are normalized and reused across posts
 
-A hashtag can be associated with multiple posts.
+Hashtag names are stored in lowercase to ensure case-insensitive matching
 
-A many-to-many relationship is implemented using an explicit join table (post_hashtags).
+Join table records are cleaned up automatically when a post is deleted
 
-This keeps the schema normalized and avoids duplication of hashtag data.
+Indexing
 
-Constraints & Data Integrity
+An index on hashtags.name allows fast hashtag-based searches
 
-Hashtag names are unique to prevent duplicate records.
-
-Hashtags are normalized to lowercase at the application level to ensure case-insensitive matching.
-
-Foreign key constraints with cascading behavior ensure that join records are cleaned up automatically when a post is deleted.
-
-Indexing Strategy
-
-An index is added on the name column of the hashtags table to support fast hashtag-based searches.
-
-This improves performance for endpoints that fetch posts by hashtag.
-
-Indexes are chosen based on actual query usage rather than premature optimization.
-
-API Design
-
-The hashtag system is exposed indirectly through post-related APIs:
-
-Hashtags are created or reused automatically during post creation.
-
-Posts can be fetched by hashtag using a dedicated endpoint.
-
-This keeps the API simple while still supporting discoverability.
-
-Scalability Considerations
-
-Hashtags are stored independently and reused across posts, allowing the system to scale without data duplication.
-
-Indexed lookups ensure hashtag searches remain efficient as the number of posts grows.
-
-The design supports future features such as trending hashtags or hashtag analytics without schema changes.
-
-
- ## Activity Tracking System DesignFeed (/api/posts/feed)
+## 6. Feed System Design (GET /api/posts/feed)
 Overview
 
-The feed endpoint is responsible for showing users a personalized list of posts.
-Instead of showing all posts in the system, the feed only includes posts created by users that the current user follows.
+The feed endpoint returns a personalized list of posts for a user.
+Only posts created by users that the current user follows are included.
 
-This mirrors how feeds work in real social media platforms, where users primarily see content from people they have chosen to follow.
+This mirrors real-world social media behavior and avoids unnecessary data loading.
 
-How the Feed Works:
-When a request is made to the feed endpoint, the backend performs the following steps:
+How the Feed Works
 
-The userId is taken from the query parameters.
+userId is read from query parameters
 
-All users followed by the given user are fetched from the follows table.
+The list of users followed by the current user is fetched from the follows table
 
-Posts are retrieved where the author belongs to that followed user list.
+Posts are retrieved where the author belongs to that followed user list
 
-Each post is joined with its author details.
+Each post is joined with:
 
-The number of likes on each post is calculated.
+author details
 
-Posts are sorted by creation time, with the newest posts shown first.
+associated hashtags
 
-Pagination is applied using limit and offset.
+Like counts are calculated using aggregation
 
-If the user does not follow anyone, the feed correctly returns an empty list.
+Posts are sorted by createdAt (newest first)
+
+Pagination is applied using limit and offset
+
+If a user does not follow anyone, the feed returns an empty list.
 
 API Details
 
@@ -377,69 +221,220 @@ GET /api/posts/feed
 
 Query Parameters
 
-userId – ID of the current user
+userId
 
-limit – number of posts to return
+limit
 
-offset – pagination offset
+offset
 
 Example
 
 /api/posts/feed?userId=1&limit=10&offset=0
 
-Response Format
-
-Each feed item contains:
-
-post content
-
-post creation time
-
-author information
-
-associated hashtags
-
-total like count
-
-Example response:
-
-{
-  "id": 3,
-  "content": "Hello from sudh 👋",
-  "createdAt": "2026-02-05T20:04:23.000Z",
-  "author": {
-    "id": 2,
-    "firstName": "sudh",
-    "lastName": "singh",
-    "email": "sukurd@test.com"
-  },
-  "hashtags": [],
-  "likeCount": 0
-}
-
 Performance Considerations
 
-An index on authorId and createdAt is used to keep feed queries fast.
+An index on (authorId, createdAt) keeps feed queries fast
 
-Like counts are calculated using aggregation instead of loading all likes.
+Like counts are calculated without loading full like records
 
-Pagination ensures the endpoint remains efficient even with a large number of posts.
+Pagination prevents large result sets from impacting performance
 
-Edge Cases:
-If a user does not follow anyone, the feed returns an empty array.
+Future Improvements
 
-Invalid or missing query parameters are handled safely.
+Cursor-based pagination
 
-The endpoint never crashes due to malformed input.
+Feed caching for highly active users
 
-Future Improvements:
-Cursor-based pagination for better performance at scale.
+Ranking logic based on engagement
 
-Caching feed results for frequently active users.
+## 7.Activity Tracking System Design
+Overview
 
-Adding ranking logic based on likes or engagement.
+The activity endpoint provides a unified timeline of user actions such as:
 
-Why This Design
+Creating a post
 
-The feed logic is intentionally kept simple and easy to reason about.
-It focuses on correctness and clarity first, while still allowing room for optimization and scaling in the future.
+Following a user
+
+Liking a post
+
+Instead of storing activities in a separate table, activities are derived from existing entities.
+
+This avoids data duplication and ensures consistency.
+
+How Activity Tracking Works
+
+Post creation events come from the posts table
+
+Follow actions come from the follows table
+
+Likes come from the likes table
+
+Results are merged, normalized into a common response format, and sorted by time
+
+API Details
+
+Endpoint
+
+GET /api/users/:id/activity
+
+
+Query Parameters
+
+limit
+
+offset
+
+Response Format
+
+{
+  "type": "like",
+  "createdAt": "...",
+  "data": {
+    "postId": 1
+  }
+}
+
+Design Rationale
+
+No extra activity table reduces storage overhead
+
+Timeline always reflects the source of truth
+
+Easy to extend with new activity types
+
+### Migration Strategy
+
+Automatic schema synchronization is disabled
+
+All schema changes are handled through migrations
+
+Migrations are tested by recreating the database from scratch
+
+This ensures predictable schema evolution and prevents environment-specific issues.
+
+### Scalability Considerations
+
+Pagination on all list endpoints
+
+Indexes added based on actual query patterns
+
+Normalized schema supports growth without refactoring
+
+Future caching and background processing can be added cleanly
+
+
+## API Overview
+
+The backend exposes REST-style APIs grouped by core features.  
+Endpoints are designed to be simple, predictable, and easy to extend.
+
+---
+
+### User APIs
+
+- **POST /api/users**  
+  Creates a new user.  
+  Email is enforced as unique to prevent duplicate accounts.
+
+- **GET /api/users**  
+  Returns all users (pagination-ready).
+
+- **GET /api/users/:id**  
+  Fetches a single user by ID.
+
+---
+
+### Post APIs
+
+- **POST /api/posts**  
+  Creates a new post for a user.  
+  Supports optional hashtag extraction during creation.
+
+- **GET /api/posts**  
+  Returns all posts with author details.
+
+- **GET /api/posts/:id**  
+  Fetches a single post along with author information.
+
+- **GET /api/posts/hashtag/:tag**  
+  Returns all posts associated with a given hashtag.
+
+---
+
+### Follow APIs
+
+- **POST /api/follows**  
+  Allows one user to follow another user.  
+  Duplicate follows are prevented.
+
+- **DELETE /api/follows**  
+  Unfollows a user if the follow relationship exists.
+
+- **GET /api/follows/:userId**  
+  Returns followers of a given user.
+
+---
+
+### Like APIs
+
+- **POST /api/likes**  
+  Likes a post on behalf of a user.  
+  A user can like a post only once.
+
+- **DELETE /api/likes**  
+  Removes a like from a post.
+
+- **GET /api/likes/:postId**  
+  Returns the total like count for a post.
+
+---
+
+### Feed API
+
+- **GET /api/posts/feed**  
+
+  Returns a personalized feed for a user based on who they follow.
+
+  **Query Params**
+  - userId
+  - limit
+  - offset
+
+  Posts are ordered by most recent first and include:
+  - author details
+  - hashtags
+  - total like count
+
+---
+
+### Activity API
+
+- **GET /api/users/:id/activity**
+
+  Returns recent activities performed by a user, including:
+  - post creation
+  - follows
+  - likes
+
+  Results are ordered by time and support pagination.
+
+---
+
+### Error Handling
+
+- Invalid requests return clear client-friendly error messages.
+- Duplicate actions (like duplicate follow or like) are handled gracefully.
+- Database constraints act as a safety net for edge cases.
+
+---
+
+This API structure keeps responsibilities clearly separated and allows new features to be added without breaking existing endpoints.
+
+---
+
+## Final Notes
+
+The system is designed with correctness and clarity first, while leaving room for optimization as usage grows.
+
+All implemented features are backed by migrations, tested via Postman, and structured in a way that reflects real-world backend engineering practices.
